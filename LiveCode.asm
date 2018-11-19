@@ -27,10 +27,12 @@ BUTTON_LEFT   = %00000010
 BUTTON_RIGHT  = %00000001
 
     .rsset $0010
-joypad1_state      .rs 1
-nametable_address  .rs 2
-scroll_x           .rs 1
-scroll_page        .rs 1
+joypad1_state          .rs 1
+nametable_address      .rs 2
+scroll_x               .rs 1
+scroll_page            .rs 1
+player_speed           .rs 2    ; In subpixels per frame -- 16 bits
+player_position_sub    .rs 1    ; in subpixels
 
     .rsset $0200
 sprite_player      .rs 4
@@ -40,6 +42,10 @@ SPRITE_Y           .rs 1
 SPRITE_TILE        .rs 1
 SPRITE_ATTRIB      .rs 1
 SPRITE_X           .rs 1
+
+GRAVITY            = 10               ; In subpixels per frame^2
+JUMP               = -(2 * 256)   ; in subpixels / frame
+SCREEN_BOTTOM_Y    = 240 - 20  
 
     .bank 0
     .org $C000
@@ -287,16 +293,16 @@ ReadController:
                 ; }
 ReadRight_Done:
 
-     ; Read Down button
-    LDA joypad1_state
-    AND #BUTTON_DOWN
-    BEQ ReadDown_Done ; if ((JOY1 & 1)) != 0 {
-    LDA sprite_player + SPRITE_Y
-    CLC 
-    ADC #1
-    STA sprite_player + SPRITE_Y
-                ; }
-ReadDown_Done:
+;      ; Read Down button
+;     LDA joypad1_state
+;     AND #BUTTON_DOWN
+;     BEQ ReadDown_Done ; if ((JOY1 & 1)) != 0 {
+;     LDA sprite_player + SPRITE_Y
+;     CLC 
+;     ADC #1
+;     STA sprite_player + SPRITE_Y
+;                 ; }
+; ReadDown_Done:
 
     ; React to Left button
     LDA joypad1_state
@@ -313,29 +319,67 @@ ReadLeft_Done:
     LDA joypad1_state
     AND #BUTTON_UP
     BEQ ReadUp_Done ; if ((JOY1 & 1)) != 0 {
-    LDA sprite_player + SPRITE_Y
-    SEC 
-    SBC #1
-    STA sprite_player + SPRITE_Y
-                ; }
+    ; Set player speed
+    LDA #LOW(JUMP)
+    STA player_speed
+    LDA #HIGH(JUMP)
+    STA player_speed+1
 ReadUp_Done:
 
-    ; Scroll
-    LDA scroll_x
+    ; Update player sprite (GRAVITY)
+    ; First, update speed
+    LDA player_speed    ; Low 8 bits
     CLC
-    ADC #1
-    STA scroll_x
-    STA PPUSCROLL
-    BCC Scroll_NoWrap
-    ; scroll_x has wrapped, so switch scroll_page
-    LDA scroll_page
-    EOR #1
-    STA scroll_page
-    ORA #%10000000
-    STA PPUCTRL
-Scroll_NoWrap:
-    LDA #0
-    STA PPUSCROLL
+    ADC #LOW(GRAVITY)
+    STA player_speed
+    LDA player_speed+1  ; High 8 bits
+    ADC #HIGH(GRAVITY)  ; NB: *don't* clear the carry flag!
+    STA player_speed+1
+
+    ; Second, update position
+    LDA player_position_sub ; Low 8 bits
+    CLC
+    ADC player_speed
+    STA player_position_sub
+    LDA sprite_player+SPRITE_Y ; High 8 bits
+    ADC player_speed+1         ; NB: *don't* clear the carry flag!
+    STA sprite_player+SPRITE_Y
+
+    ; Check for top or bottom of screen
+    CMP #SCREEN_BOTTOM_Y ; Accumulator already contains player y position
+    BCC UpdatePlayer_NoClamp
+    ; Check sign of speed
+    LDA player_speed+1
+    BMI UpdatePlayer_ClampToTop
+    LDA #SCREEN_BOTTOM_Y-1      ; Clamp to bottom
+    JMP UpdatePlayer_DoClamping
+UpdatePlayer_ClampToTop:
+    LDA #0                      ; Clamp to top
+UpdatePlayer_DoClamping:        
+    STA sprite_player+SPRITE_Y
+    LDA #0                  ; Set player speed to zero
+    STA player_speed        ; (both bytes)
+    STA player_speed+1
+UpdatePlayer_NoClamp:
+
+
+
+    ; Scroll
+;     LDA scroll_x
+;     CLC
+;     ADC #1
+;     STA scroll_x
+;     STA PPUSCROLL
+;     BCC Scroll_NoWrap
+;     ; scroll_x has wrapped, so switch scroll_page
+;     LDA scroll_page
+;     EOR #1
+;     STA scroll_page
+;     ORA #%10000000
+;     STA PPUCTRL
+; Scroll_NoWrap:
+;     LDA #0
+;     STA PPUSCROLL
 
 
     ; copy sprite data to ppu

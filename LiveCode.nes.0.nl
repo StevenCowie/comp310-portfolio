@@ -1,14 +1,14 @@
-$C170#ReadDown_Done#
-$C1AB#Scroll_NoWrap#
-$C180#ReadLeft_Done#
+$C170#ReadLeft_Done#
 $C0D6#LoadNametable_InnerLoop#
 $C0D4#LoadNametable_OuterLoop#
 $C0E6#LoadNametable_End#
 $C059#InitialiseGame#
 $C12E#LoadAttributes2_Loop#
 $C10E#LoadNametable2_OuterLoop#
-$C1BB#NametableData#
+$C1C0#UpdatePlayer_NoClamp#
+$C1CB#NametableData#
 $C160#ReadRight_Done#
+$C1B3#UpdatePlayer_ClampToTop#
 $C017#vblankwait1#
 $C0F4#LoadAttributes_Loop#
 $C03C#vblankwait2#
@@ -17,6 +17,7 @@ $C000#RESET#
 $C120#LoadNametable2_End#
 $C135#NMI#
 $C144#ReadController#
-$C190#ReadUp_Done#
+$C181#ReadUp_Done#
 $C056#forever#
 $C110#LoadNametable2_InnerLoop#
+$C1B5#UpdatePlayer_DoClamping#
