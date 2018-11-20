@@ -28,6 +28,7 @@ BUTTON_RIGHT  = %00000001
 
     .rsset $0010
 joypad1_state          .rs 1
+bullet_active          .rs 1
 nametable_address      .rs 2
 scroll_x               .rs 1
 scroll_page            .rs 1
@@ -36,6 +37,7 @@ player_position_sub    .rs 1    ; in subpixels
 
     .rsset $0200
 sprite_player      .rs 4
+sprite_bullet      .rs 4
 
     .rsset $0000
 SPRITE_Y           .rs 1
@@ -325,6 +327,36 @@ ReadLeft_Done:
     LDA #HIGH(JUMP)
     STA player_speed+1
 ReadUp_Done:
+
+    ; React to A button
+    LDA joypad1_state
+    AND #BUTTON_A
+    BEQ ReadA_Done 
+    ; Spawn a bullet
+    LDA #1
+    STA bullet_active
+    LDA sprite_player + SPRITE_Y    ; Y pos
+    STA sprite_bullet + SPRITE_Y
+    LDA #2      ; Tile No.
+    STA sprite_bullet + SPRITE_TILE
+    LDA #0   ; Attributes (different palettes?)
+    STA sprite_bullet + SPRITE_ATTRIB
+    LDA sprite_player + SPRITE_X    ; X pos
+    STA sprite_bullet + SPRITE_X
+ReadA_Done:
+
+    ; Update the bullet
+    LDA bullet_active
+    BEQ UpdateBullet_Done
+    LDA sprite_bullet + SPRITE_X
+    CLC
+    ADC #1
+    STA sprite_bullet + SPRITE_X
+    BCC UpdateBullet_Done
+    ; If carry flag is clear, bullet has left right of screen -- destroy
+    LDA #0
+    STA bullet_active
+UpdateBullet_Done:
 
     ; Update player sprite (GRAVITY)
     ; First, update speed

@@ -5,10 +5,12 @@ $C0E6#LoadNametable_End#
 $C059#InitialiseGame#
 $C12E#LoadAttributes2_Loop#
 $C10E#LoadNametable2_OuterLoop#
-$C1C0#UpdatePlayer_NoClamp#
-$C1CB#NametableData#
+$C1F7#UpdatePlayer_NoClamp#
+$C1B8#UpdateBullet_Done#
+$C202#NametableData#
 $C160#ReadRight_Done#
-$C1B3#UpdatePlayer_ClampToTop#
+$C1A3#ReadA_Done#
+$C1EA#UpdatePlayer_ClampToTop#
 $C017#vblankwait1#
 $C0F4#LoadAttributes_Loop#
 $C03C#vblankwait2#
@@ -20,4 +22,4 @@ $C144#ReadController#
 $C181#ReadUp_Done#
 $C056#forever#
 $C110#LoadNametable2_InnerLoop#
-$C1B5#UpdatePlayer_DoClamping#
+$C1EC#UpdatePlayer_DoClamping#
