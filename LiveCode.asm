@@ -38,6 +38,7 @@ player_position_sub    .rs 1    ; in subpixels
     .rsset $0200
 sprite_player      .rs 4
 sprite_bullet      .rs 4
+sprite_chainsaw    .rs 4
 
     .rsset $0000
 SPRITE_Y           .rs 1
@@ -292,6 +293,10 @@ ReadController:
     CLC 
     ADC #1
     STA sprite_player + SPRITE_X
+    LDA sprite_chainsaw + SPRITE_X
+    CLC 
+    ADC #1
+    STA sprite_chainsaw + SPRITE_X
                 ; }
 ReadRight_Done:
 
@@ -314,6 +319,10 @@ ReadRight_Done:
     SEC 
     SBC #1
     STA sprite_player + SPRITE_X
+    LDA sprite_chainsaw + SPRITE_X
+    SEC 
+    SBC #1
+    STA sprite_chainsaw + SPRITE_X
                 ; }
 ReadLeft_Done:
 
@@ -326,6 +335,10 @@ ReadLeft_Done:
     STA player_speed
     LDA #HIGH(JUMP)
     STA player_speed+1
+    LDA sprite_chainsaw + SPRITE_Y
+    SEC 
+    SBC #1
+    STA sprite_chainsaw + SPRITE_Y
 ReadUp_Done:
 
     ; React to A button
@@ -339,11 +352,28 @@ ReadUp_Done:
     STA sprite_bullet + SPRITE_Y
     LDA #2      ; Tile No.
     STA sprite_bullet + SPRITE_TILE
-    LDA #0   ; Attributes (different palettes?)
+    LDA #0   ; Attributes
     STA sprite_bullet + SPRITE_ATTRIB
     LDA sprite_player + SPRITE_X    ; X pos
     STA sprite_bullet + SPRITE_X
 ReadA_Done:
+
+    ; React to B button
+    LDA joypad1_state
+    AND #BUTTON_B
+    BEQ ReadB_Done 
+    ; Spawn a chainsaw
+    LDA sprite_player + SPRITE_Y ; y pos
+    STA sprite_chainsaw + SPRITE_Y
+    LDA #4      ; Tile number
+    STA sprite_chainsaw + SPRITE_TILE
+    LDA #0
+    STA sprite_chainsaw + SPRITE_ATTRIB
+    LDA sprite_player + SPRITE_X ; x pos
+    CLC
+    ADC #8
+    STA sprite_chainsaw + SPRITE_X
+ReadB_Done:
 
     ; Update the bullet
     LDA bullet_active
@@ -357,6 +387,8 @@ ReadA_Done:
     LDA #0
     STA bullet_active
 UpdateBullet_Done:
+
+
 
     ; Update player sprite (GRAVITY)
     ; First, update speed
