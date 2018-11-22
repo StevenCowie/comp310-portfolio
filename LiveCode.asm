@@ -32,6 +32,14 @@ NUM_ENEMIES            = 1
 ENEMY_SPACING          = 16
 ENEMY_DESCENT_SPEED    = 4
 
+ENEMY_HITBOX_WIDTH     = 8
+ENEMY_HITBOX_HEIGHT    = 8
+BULLET_HITBOX_X        = 1  ; Change to own bullet location in sprite sheet Relative to sprite top left corner
+BULLET_HITBOX_Y        = 3
+BULLET_HITBOX_WIDTH    = 8  ; Change to my own bullet height & width
+BULLET_HITBOX_HEIGHT   = 8
+
+
     .rsset $0000
 joypad1_state          .rs 1
 bullet_active          .rs 1
@@ -461,31 +469,36 @@ UpdateEnemy_Reverse:
     STA sprite_enemy_0+SPRITE_ATTRIB, x
 UpdateEnemy_NoReverse:
     ; Check collision with bullet
-    LDA sprite_enemy_0+SPRITE_X, x ; Calculate x_enemy - width_bullet (x1-w2)
+    LDA sprite_enemy_0+SPRITE_X, x ; Calculate x_enemy - width_bullet -1 (x1-w2-1)
     SEC
-    SBC #8                         ; Assume w2 = 8
-    CMP sprite_bullet+SPRITE_X     ; Compare with x_bullet (x2)
-    BCS UpdateEnemy_NoCollision    ; Branch if x1-w2 >= x2
+    SBC #BULLET_HITBOX_X
+    SEC
+    SBC #BULLET_HITBOX_WIDTH+1                                          ; Assume w2 = 8
+    CMP sprite_bullet+SPRITE_X                                          ; Compare with x_bullet (x2)
+    BCS UpdateEnemy_NoCollision                                         ; Branch if x1-w2 -BULLET_HITBOX_X >= x2 ie x1-w2 > x2
     CLC
-    ADC #16                        ; Calculate x_enemy + w_enemy (x1+w1), assuming w1=8
-    CMP sprite_bullet+SPRITE_X     ; Compare with x_bullet (x2)
-    BCC UpdateEnemy_NoCollision    ; Branching if x1+w1 < x2
+    ADC #BULLET_HITBOX_WIDTH+1+ENEMY_HITBOX_WIDTH                       ; Calculate x_enemy + w_enemy (x1+w1), assuming w1=8
+    CMP sprite_bullet+SPRITE_X                                          ; Compare with x_bullet (x2)
+    BCC UpdateEnemy_NoCollision                                         ; Branching if x1+w1-BULLET_HITBOX_X < x2
 
-    LDA sprite_enemy_0+SPRITE_Y, x ; Calculate y_enemy - h_bullet (y1-h2)
+    LDA sprite_enemy_0+SPRITE_Y, x                                      ; Calculate y_enemy - h_bullet (y1-h2)
     SEC
-    SBC #8                         ; Assume h2 = 8
-    CMP sprite_bullet+SPRITE_Y     ; Compare with y_bullet (y2)
-    BCS UpdateEnemy_NoCollision    ; Branch if x1-h2 >= y2
+    SBC #BULLET_HITBOX_Y
+    SEC
+    SBC #BULLET_HITBOX_HEIGHT+1                                         ; Assume h2 = 8
+    CMP sprite_bullet+SPRITE_Y                                          ; Compare with y_bullet (y2)
+    BCS UpdateEnemy_NoCollision                                         ; Branch if x1-h2 > y2
     CLC
-    ADC #16                        ; Calculate y_enemy + h_enemy (y1+h1), assuming h1=8
-    CMP sprite_bullet+SPRITE_Y     ; Compare with y_bullet (y2)
-    BCC UpdateEnemy_NoCollision    ; Branching if y1+h1 < y2
+    ADC #BULLET_HITBOX_HEIGHT+1+ENEMY_HITBOX_HEIGHT                     ; Calculate y_enemy + h_enemy (y1+h1), assuming h1=8
+    CMP sprite_bullet+SPRITE_Y                                          ; Compare with y_bullet (y2)
+    BCC UpdateEnemy_NoCollision                                         ; Branching if y1+h1 < y2
     ; Handle collision
-    LDA #0                         ; Destroys the bullet & enemy
+    LDA #0                                                              ; Destroys the bullet & enemy
     STA bullet_active
     STA enemy_info+ENEMY_ACTIVE, x
     LDA #$FF
-    STA sprite_bullet+SPRITE_Y              
+    STA sprite_bullet+SPRITE_Y
+    STA sprite_enemy_0+SPRITE_Y, x  ; Moves enemy off screen when hit (change this to get enemy to respawn)           
 UpdateEnemy_NoCollision:
 UpdateEnemy_Next:
     DEX
@@ -559,7 +572,7 @@ UpdatePlayer_NoClamp:
 ; ---------------------------------------------------------------------------
 
 NametableData:
-    .db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03
+    .db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03     ; Used for background sprites
     .db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03
     .db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03 
     .db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03 
