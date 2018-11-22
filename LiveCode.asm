@@ -58,6 +58,7 @@ SPRITE_X           .rs 1
 
     .rsset $0000
 ENEMY_SPEED        .rs 1
+ENEMY_ACTIVE       .rs 1
 
 
 
@@ -216,14 +217,13 @@ InitEnemies_LoopX:
     STA sprite_enemy_0 + SPRITE_X, x
     LDA temp_y
     STA sprite_enemy_0+ SPRITE_Y, x
-    LDA #1
-    STA sprite_enemy_0+SPRITE_TILE, x
     LDA #0
     STA sprite_enemy_0+SPRITE_ATTRIB, x
     LDA #1
+    STA sprite_enemy_0+SPRITE_TILE, x
     STA enemy_info+ENEMY_SPEED, x
-
-    ; Loop checl for x value
+    STA enemy_info+ENEMY_ACTIVE, x
+    ; Loop check for x value
     LDA temp_x
     SEC
     SBC #ENEMY_SPACING
@@ -434,6 +434,9 @@ UpdateBullet_Done:
     ; Update enemy (movement)
     LDX #NUM_ENEMIES-1
 UpdateEnemy_Loop:
+    ; Check if enemy is alive
+    LDA enemy_info+ENEMY_ACTIVE, x
+    BEQ UpdateEnemy_Next
     LDA sprite_enemy_0+SPRITE_X, x
     CLC
     ADC enemy_info+ENEMY_SPEED, x
@@ -457,6 +460,34 @@ UpdateEnemy_Reverse:
     EOR #%01000000
     STA sprite_enemy_0+SPRITE_ATTRIB, x
 UpdateEnemy_NoReverse:
+    ; Check collision with bullet
+    LDA sprite_enemy_0+SPRITE_X, x ; Calculate x_enemy - width_bullet (x1-w2)
+    SEC
+    SBC #8                         ; Assume w2 = 8
+    CMP sprite_bullet+SPRITE_X     ; Compare with x_bullet (x2)
+    BCS UpdateEnemy_NoCollision    ; Branch if x1-w2 >= x2
+    CLC
+    ADC #16                        ; Calculate x_enemy + w_enemy (x1+w1), assuming w1=8
+    CMP sprite_bullet+SPRITE_X     ; Compare with x_bullet (x2)
+    BCC UpdateEnemy_NoCollision    ; Branching if x1+w1 < x2
+
+    LDA sprite_enemy_0+SPRITE_Y, x ; Calculate y_enemy - h_bullet (y1-h2)
+    SEC
+    SBC #8                         ; Assume h2 = 8
+    CMP sprite_bullet+SPRITE_Y     ; Compare with y_bullet (y2)
+    BCS UpdateEnemy_NoCollision    ; Branch if x1-h2 >= y2
+    CLC
+    ADC #16                        ; Calculate y_enemy + h_enemy (y1+h1), assuming h1=8
+    CMP sprite_bullet+SPRITE_Y     ; Compare with y_bullet (y2)
+    BCC UpdateEnemy_NoCollision    ; Branching if y1+h1 < y2
+    ; Handle collision
+    LDA #0                         ; Destroys the bullet & enemy
+    STA bullet_active
+    STA enemy_info+ENEMY_ACTIVE, x
+    LDA #$FF
+    STA sprite_bullet+SPRITE_Y              
+UpdateEnemy_NoCollision:
+UpdateEnemy_Next:
     DEX
     BPL UpdateEnemy_Loop
 
