@@ -34,15 +34,17 @@ ENEMY_DESCENT_SPEED    = 4
 
 ENEMY_HITBOX_WIDTH     = 8
 ENEMY_HITBOX_HEIGHT    = 8
-BULLET_HITBOX_X        = 1  ; Change to own bullet location in sprite sheet Relative to sprite top left corner
+BULLET_HITBOX_X        = 1  
 BULLET_HITBOX_Y        = 3
-BULLET_HITBOX_WIDTH    = 8  ; Change to my own bullet height & width
+BULLET_HITBOX_WIDTH    = 8  
 BULLET_HITBOX_HEIGHT   = 8
+ENEMY_SPAWN            = 240
 
 
     .rsset $0000
 joypad1_state          .rs 1
 bullet_active          .rs 1
+chainsaw_active        .rs 1
 nametable_address      .rs 2
 scroll_x               .rs 1
 scroll_page            .rs 1
@@ -58,6 +60,9 @@ sprite_bullet      .rs 4
 sprite_chainsaw    .rs 4
 sprite_enemy_0     .rs 4
 sprite_block       .rs 4
+sprite_block1      .rs 4
+sprite_block2      .rs 4
+
 
     .rsset $0000
 SPRITE_Y           .rs 1
@@ -68,13 +73,14 @@ SPRITE_X           .rs 1
     .rsset $0000
 ENEMY_SPEED        .rs 1
 ENEMY_ACTIVE       .rs 1
+ENEMY_ALIVE        .rs 1
 
 
 
 GRAVITY            = 10               ; In subpixels per frame^2
-JUMP               = -(2 * 256)   ; in subpixels / frame
-SCREEN_BOTTOM_Y    = 240 - 20
-SCREEN_RIGHT_X     = 256 - 20
+JUMP               = -(2 * 256)       ; in subpixels / frame
+SCREEN_BOTTOM_Y    = 240 - 20         ; Bottom of screen position
+SCREEN_RIGHT_X     = 256 - 20         ; Right side of screen
 
     .bank 0
     .org $C000
@@ -199,7 +205,7 @@ InitialiseGame: ; Begin subroutine
     STA PPUDATA
 
     ; Write the palette colours
-    LDA #$0C
+    LDA #$0C                    
     STA PPUDATA
     LDA #$1C
     STA PPUDATA
@@ -211,38 +217,69 @@ InitialiseGame: ; Begin subroutine
     STA sprite_player + SPRITE_Y
     LDA #0      ; Tile No.
     STA sprite_player + SPRITE_TILE
-    LDA #0   ; Attributes (different palettes?)
+    LDA #0   ; Attributes 
     STA sprite_player + SPRITE_ATTRIB
     LDA #128    ; X pos
     STA sprite_player + SPRITE_X
 
-    ; Enemies
-    LDX #0
-    LDA #ENEMY_SQUAD_HEIGHT * ENEMY_SPACING
-    STA temp_y
-    LDA #ENEMY_SQUAD_WIDTH * ENEMY_SPACING
-    STA temp_x
-InitEnemies_LoopX:
-    ; Accumulator = temp_x here
-    STA sprite_enemy_0 + SPRITE_X, x
-    LDA temp_y
-    STA sprite_enemy_0+ SPRITE_Y, x
-    LDA #0
-    STA sprite_enemy_0+SPRITE_ATTRIB, x
-    LDA #1
-    STA sprite_enemy_0+SPRITE_TILE, x
-    STA enemy_info+ENEMY_SPEED, x
-    STA enemy_info+ENEMY_ACTIVE, x
-    ; Loop check for x value
-    LDA temp_x
-    SEC
-    SBC #ENEMY_SPACING
-    STA temp_x
-    BNE InitEnemies_LoopX
+    ; Block 1
+    LDA #120    ; Y pos
+    STA sprite_block + SPRITE_Y
+    LDA #5      ; Tile No.
+    STA sprite_block + SPRITE_TILE
+    LDA #0   ; Attributes 
+    STA sprite_block + SPRITE_ATTRIB
+    LDA #128    ; X pos
+    STA sprite_block + SPRITE_X
+
+    ; Block 2
+    LDA #170    ; Y pos
+    STA sprite_block1 + SPRITE_Y
+    LDA #5      ; Tile No.
+    STA sprite_block1 + SPRITE_TILE
+    LDA #0   ; Attributes 
+    STA sprite_block1 + SPRITE_ATTRIB
+    LDA #225    ; X pos
+    STA sprite_block1 + SPRITE_X
+  
+
+    ; Enemy
+    LDA #220    ; Y pos
+    STA sprite_enemy_0 + SPRITE_Y
+    LDA #1      ; Tile No.
+    STA sprite_enemy_0 + SPRITE_TILE
+    LDA #0   ; Attributes 
+    STA sprite_enemy_0 + SPRITE_ATTRIB
+    LDA #240    ; X pos
+    STA sprite_enemy_0 + SPRITE_X  
+
+;     ; Enemies
+;     LDX #0
+;     LDA #ENEMY_SQUAD_HEIGHT * ENEMY_SPACING
+;     STA temp_y
+;     LDA #ENEMY_SQUAD_WIDTH * ENEMY_SPACING
+;     STA temp_x
+; InitEnemies_LoopX:
+;     ; Accumulator = temp_x here
+;     STA sprite_enemy_0 + SPRITE_X, x
+;     LDA temp_y
+;     STA sprite_enemy_0+ SPRITE_Y, x
+;     LDA #0
+;     STA sprite_enemy_0+SPRITE_ATTRIB, x
+;     LDA #1
+;     STA sprite_enemy_0+SPRITE_TILE, x
+;     STA enemy_info+ENEMY_SPEED, x
+;     STA enemy_info+ENEMY_ACTIVE, x
+;     ; Loop check for x value
+;     LDA temp_x
+;     SEC
+;     SBC #ENEMY_SPACING
+;     STA temp_x
+;     BNE InitEnemies_LoopX
 
     ; Load nametable data 
     LDA #$20        ; Write address $2000 to PPUADDR register
-    STA PPUADDR
+    STA PPUADDR     
     LDA #$00
     STA PPUADDR
 
@@ -318,36 +355,36 @@ LoadAttributes2_Loop:
 ; NMI is called on every frame
 NMI:
     ; Initialise controller 1
-    LDA #1
+    LDA #1                     ; Loads numerical value 1 and stores it in Joy1
     STA JOY1
     LDA #0
     STA JOY1
 
     ;Read joypad state
     LDX #0
-    STX joypad1_state
+    STX joypad1_state       ; Stores joypad1_state in the x register
 ReadController:
-    LDA JOY1
-    LSR A
-    ROL joypad1_state
-    INX 
-    CPX #8
-    BNE ReadController
+    LDA JOY1                ; Load Joy1 into accumulator
+    LSR A                   ; Shifts bits right one position
+    ROL joypad1_state       ; Shifts bits left one position
+    INX                     ; Increment X
+    CPX #8                  ; Compare X register to 8
+    BNE ReadController      
 
 
     ; React to Right button
     LDA joypad1_state
-    AND #BUTTON_RIGHT
+    AND #BUTTON_RIGHT  
     BEQ ReadRight_Done ; if ((JOY1 & 1)) != 0 {
-    LDA sprite_player + SPRITE_X
-    CLC 
-    ADC #1
-    STA sprite_player + SPRITE_X
-    LDA sprite_chainsaw + SPRITE_X
-    CLC 
-    ADC #1
-    STA sprite_chainsaw + SPRITE_X
-                ; }
+    LDA sprite_player + SPRITE_X    ; Loads player sprite 
+    CLC                             ; Clears carry flag
+    ADC #1                          ; Adds 1
+    STA sprite_player + SPRITE_X    ; Stores new value from accumulator
+    LDA sprite_chainsaw + SPRITE_X  ; Loads in new value
+    CLC                             ; Clears carry flag
+    ADC #1                          ; Adds 1
+    STA sprite_chainsaw + SPRITE_X  ; Stores new value 
+                ; }                 ; Moves the sprite right with the right button on the joypad, same with chainsaw
 ReadRight_Done:
 
 ;      ; Read Down button
@@ -365,7 +402,7 @@ ReadRight_Done:
     LDA joypad1_state
     AND #BUTTON_LEFT
     BEQ ReadLeft_Done ; if ((JOY1 & 1)) != 0 {
-    LDA sprite_player + SPRITE_X
+    LDA sprite_player + SPRITE_X     ; If left button is pushed it moves player sprite left, same with chainsaw
     SEC 
     SBC #1
     STA sprite_player + SPRITE_X
@@ -379,7 +416,7 @@ ReadLeft_Done:
      ; Read Up button
     LDA joypad1_state
     AND #BUTTON_UP
-    BEQ ReadUp_Done ; if ((JOY1 & 1)) != 0 {
+    BEQ ReadUp_Done ; if ((JOY1 & 1)) != 0 {    ; Checks to see if up is pushed 
     ; Set player speed
     LDA #LOW(JUMP)
     STA player_speed
@@ -429,7 +466,7 @@ ReadA_Done:
 ReadB_Done:
 
     ; Update the bullet
-    LDA bullet_active
+    LDA bullet_active               ; 
     BEQ UpdateBullet_Done
     LDA sprite_bullet + SPRITE_X
     CLC
@@ -441,22 +478,81 @@ ReadB_Done:
     STA bullet_active
 UpdateBullet_Done:
 
-    ; Update enemy (movement)
-    LDX #NUM_ENEMIES-1
-UpdateEnemy_Loop:
-    ; Check if enemy is alive
-    LDA enemy_info+ENEMY_ACTIVE, x
-    BEQ UpdateEnemy_Next
-    LDA sprite_enemy_0+SPRITE_X, x
+    ; Update chainsaw
+    ; If carry flag is clear, destroy chainsaw
+
+    ; Enemy Movement HERE
+
+    ; Check collision With Bullet
+    LDA sprite_enemy_0+SPRITE_X    ; calculate x_enemy - w_bullet (x1-w2)
+    SEC
+    SBC #8                         ;assume Bullet width = 8 = w2
+    CMP sprite_bullet+SPRITE_X     ; Compare with x_bullet (x2)
+    BCS UpdateEnemy_NoCollisions   ; Branch if x1-w2 >= x2
     CLC
-    ADC enemy_info+ENEMY_SPEED, x
-    STA sprite_enemy_0+SPRITE_X, x
-    CMP #256 - ENEMY_SPACING
-    BCS UpdateEnemy_NoReverse
-    CMP #ENEMY_SPACING
-    BCC UpdateEnemy_Reverse
-    JMP UpdateEnemy_NoReverse
-UpdateEnemy_Reverse:
+    ADC #16                        ; Calculate x_enemy + w_enemy (x1+w1), assuming w1 = 8
+    CMP sprite_bullet+SPRITE_X     ; Compare with x_bullet (x2)
+    BCC UpdateEnemy_NoCollisions   ; Branch if x1+w1 < x2
+
+    LDA sprite_enemy_0+SPRITE_Y    ; calculate y_enemy - h_bullet (y1-h2)
+    SEC
+    SBC #8                         ;assume Bullet height = 8 = h2
+    CMP sprite_bullet+SPRITE_Y     ; Compare with y_bullet (x2)
+    BCS UpdateEnemy_NoCollisions   ; Branch if y1-h2 >= y2
+    CLC
+    ADC #16                        ; Calculate y_enemy + h_enemy (y1+h1), assuming h1 = 8
+    CMP sprite_bullet+SPRITE_Y     ; compare with y_bullet (y2)
+    BCC UpdateEnemy_NoCollisions   ; Branch if y1+h1 < y2
+    ; Handle collision
+    LDA #0                         ; Destroys the bullet
+    STA bullet_active              
+    LDA #$FF                       ; Sets it so its off the screen
+    STA sprite_bullet+SPRITE_Y
+    LDA #ENEMY_SPAWN
+    CLC
+    STA sprite_enemy_0+SPRITE_X
+UpdateEnemy_NoCollisions:
+
+    ; Check collision With chainsaw
+    LDA sprite_enemy_0+SPRITE_X    ; calculate x_enemy - w_chainsaw (x1-w2)
+    SEC
+    SBC #8                         ;assume chainsaw width = 8 = w2
+    CMP sprite_chainsaw+SPRITE_X     ; Compare with x_chainsaw (x2)
+    BCS UpdateEnemy_NoCollisionsChainsaw   ; Branch if x1-w2 >= x2
+    CLC
+    ADC #16                        ; Calculate x_enemy + w_enemy (x1+w1), assuming w1 = 8
+    CMP sprite_chainsaw+SPRITE_X     ; Compare with x_chainsaw (x2)
+    BCC UpdateEnemy_NoCollisionsChainsaw   ; Branch if x1+w1 < x2
+
+    LDA sprite_enemy_0+SPRITE_Y    ; calculate y_enemy - h_chainsaw (y1-h2)
+    SEC
+    SBC #8                         ;assume chainsaw height = 8 = h2
+    CMP sprite_chainsaw+SPRITE_Y     ; Compare with y_chainsaw (x2)
+    BCS UpdateEnemy_NoCollisionsChainsaw   ; Branch if y1-h2 >= y2
+    CLC
+    ADC #16                        ; Calculate y_enemy + h_enemy (y1+h1), assuming h1 = 8
+    CMP sprite_chainsaw+SPRITE_Y     ; compare with y_chainsaw (y2)
+    BCC UpdateEnemy_NoCollisionsChainsaw   ; Branch if y1+h1 < y2
+    ; Handle collision
+    ;NOP
+UpdateEnemy_NoCollisionsChainsaw:
+
+    ; Update enemy (movement)
+;     LDX #NUM_ENEMIES-1
+; UpdateEnemy_Loop:
+;     ; Check if enemy is alive
+;     LDA enemy_info+ENEMY_ACTIVE, x
+;     BEQ UpdateEnemy_Next
+;     LDA sprite_enemy_0+SPRITE_X, x
+;     CLC
+;     ADC enemy_info+ENEMY_SPEED, x
+;     STA sprite_enemy_0+SPRITE_X, x
+;     CMP #256 - ENEMY_SPACING
+;     BCS UpdateEnemy_NoReverse
+;     CMP #ENEMY_SPACING
+;     BCC UpdateEnemy_Reverse
+;     JMP UpdateEnemy_NoReverse
+; UpdateEnemy_Reverse:
     ; Reverse direction and descend
     ; LDA #0
     ; SEC
@@ -469,50 +565,50 @@ UpdateEnemy_Reverse:
     ; LDA sprite_enemy_0+SPRITE_ATTRIB, x
     ; EOR #%01000000
     ; STA sprite_enemy_0+SPRITE_ATTRIB, x
-UpdateEnemy_NoReverse:
+;UpdateEnemy_NoReverse:
 
                                ;             \1         \2        \3           \4            \5             \6              /7
-CheckCollisionWithEnemy .macro ; parameters: object_x, object_y, object_hit_x, object_hit_y, object_hit_w, object_hit_h, no_collision_label
-    ; Check collision with bullet
-    LDA sprite_enemy_0+SPRITE_X, x ; Calculate x_enemy - width_bullet -1 (x1-w2-1)
-    SEC
-    SBC \3
-    SEC
-    SBC \5+1                                          ; Assume w2 = 8
-    CMP \1                                          ; Compare with x_bullet (x2)
-    BCS UpdateEnemy_NoCollision                                         ; Branch if x1-w2 -BULLET_HITBOX_X >= x2 ie x1-w2 > x2
-    CLC
-    ADC \5+1+ENEMY_HITBOX_WIDTH                       ; Calculate x_enemy + w_enemy (x1+w1), assuming w1=8
-    CMP \1                                          ; Compare with x_bullet (x2)
-    BCC \7                                        ; Branching if x1+w1-BULLET_HITBOX_X < x2
+; CheckCollisionWithEnemy .macro ; parameters: object_x, object_y, object_hit_x, object_hit_y, object_hit_w, object_hit_h, no_collision_label
+;     ; Check collision with bullet
+;     LDA sprite_enemy_0+SPRITE_X, x ; Calculate x_enemy - width_bullet -1 (x1-w2-1)
+;     SEC
+;     SBC \3
+;     SEC
+;     SBC \5+1                                          ; Assume w2 = 8
+;     CMP \1                                          ; Compare with x_bullet (x2)
+;     BCS UpdateEnemy_NoCollision                                         ; Branch if x1-w2 -BULLET_HITBOX_X >= x2 ie x1-w2 > x2
+;     CLC
+;     ADC \5+1+ENEMY_HITBOX_WIDTH                       ; Calculate x_enemy + w_enemy (x1+w1), assuming w1=8
+;     CMP \1                                          ; Compare with x_bullet (x2)
+;     BCC \7                                        ; Branching if x1+w1-BULLET_HITBOX_X < x2
 
-    LDA sprite_enemy_0+SPRITE_Y, x                                      ; Calculate y_enemy - h_bullet (y1-h2)
-    SEC
-    SBC \4
-    SEC
-    SBC \6+1                                         ; Assume h2 = 8
-    CMP \2                                          ; Compare with y_bullet (y2)
-    BCS \7                                       ; Branch if x1-h2 > y2
-    CLC
-    ADC \6+1+ENEMY_HITBOX_HEIGHT                     ; Calculate y_enemy + h_enemy (y1+h1), assuming h1=8
-    CMP \2                                         ; Compare with y_bullet (y2)
-    BCC \7                                         ; Branching if y1+h1 < y2
-    .endm
+;     LDA sprite_enemy_0+SPRITE_Y, x                                      ; Calculate y_enemy - h_bullet (y1-h2)
+;     SEC
+;     SBC \4
+;     SEC
+;     SBC \6+1                                         ; Assume h2 = 8
+;     CMP \2                                          ; Compare with y_bullet (y2)
+;     BCS \7                                       ; Branch if x1-h2 > y2
+;     CLC
+;     ADC \6+1+ENEMY_HITBOX_HEIGHT                     ; Calculate y_enemy + h_enemy (y1+h1), assuming h1=8
+;     CMP \2                                         ; Compare with y_bullet (y2)
+;     BCC \7                                         ; Branching if y1+h1 < y2
+;     .endm
 
-    ; Check collision with bullet
-    CheckCollisionWithEnemy sprite_bullet+SPRITE_X, sprite_bullet+SPRITE_Y, #BULLET_HITBOX_X, #BULLET_HITBOX_Y, #BULLET_HITBOX_WIDTH, #BULLET_HITBOX_HEIGHT, UpdateEnemy_NoCollision
-    ; Handle collision
-    LDA #0                                                              ; Destroys the bullet & enemy
-    STA bullet_active
-    STA enemy_info+ENEMY_ACTIVE, x
-    LDA #$FF
-    STA sprite_bullet+SPRITE_Y
-    STA sprite_enemy_0+SPRITE_Y, x  ; Moves enemy off screen when hit (change this to get enemy to respawn)      
-UpdateEnemy_NoCollision:
+;     ; Check collision with bullet
+;     CheckCollisionWithEnemy sprite_bullet+SPRITE_X, sprite_bullet+SPRITE_Y, #BULLET_HITBOX_X, #BULLET_HITBOX_Y, #BULLET_HITBOX_WIDTH, #BULLET_HITBOX_HEIGHT, UpdateEnemy_NoCollision
+;     ; Handle collision
+;     LDA #0                                                              ; Destroys the bullet & enemy
+;     STA bullet_active
+;     STA enemy_info+ENEMY_ACTIVE, x
+;     LDA #$FF
+;     STA sprite_bullet+SPRITE_Y
+;     STA sprite_enemy_0+SPRITE_Y, x  ; Moves enemy off screen when hit (change this to get enemy to respawn)      
+; UpdateEnemy_NoCollision:
 
-UpdateEnemy_Next:
-    DEX
-    BPL UpdateEnemy_Loop
+; UpdateEnemy_Next:
+;     DEX
+;     BPL UpdateEnemy_Loop
 
 
     ; Update player sprite (GRAVITY)
