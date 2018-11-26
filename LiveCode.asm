@@ -476,24 +476,24 @@ UpdateEnemy_NoCollisions:
 
 CheckCollisiontest .macro ; Params: objectX, objectY, object2X, object2Y, No_collision_label
     ; Check collision With Block
-    LDA \1   ; calculate x_enemy - w_chainsaw (x1-w2)
+    LDA \1   ; calculate objectX - object2_W (x1-w2)
     SEC
-    SBC #8                         ;assume chainsaw width = 8 = w2
-    CMP \3     ; Compare with x_chainsaw (x2)
+    SBC #8   ;assume object2_W width = 8 = w2
+    CMP \3   ; Compare with object2X (x2)
     BCS \5   ; Branch if x1-w2 >= x2
     CLC
-    ADC #16                        ; Calculate x_enemy + w_enemy (x1+w1), assuming w1 = 8
-    CMP \3     ; Compare with x_chainsaw (x2)
+    ADC #16  ; Calculate objectX + obect1_W (x1+w1), assuming w1 = 8
+    CMP \3   ; Compare with object2X (x2)
     BCC \5   ; Branch if x1+w1 < x2
 
-    LDA \2    ; calculate y_enemy - h_chainsaw (y1-h2)
+    LDA \2   ; calculate objectY - object2_h (y1-h2)
     SEC
-    SBC #8                         ;assume chainsaw height = 8 = h2
-    CMP \4     ; Compare with y_chainsaw (x2)
+    SBC #8   ;assume chainsaw height = 8 = h2
+    CMP \4   ; Compare with object2X (x2)
     BCS \5   ; Branch if y1-h2 >= y2
     CLC
-    ADC #16                        ; Calculate y_enemy + h_enemy (y1+h1), assuming h1 = 8
-    CMP \4     ; compare with y_chainsaw (y2)
+    ADC #16  ; Calculate objectY + object1_H (y1+h1), assuming h1 = 8
+    CMP \4   ; compare with object2_H (y2)
     BCC \5   ; Branch if y1+h1 < y2
     .endm 
 
