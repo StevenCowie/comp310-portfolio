@@ -1,7 +1,6 @@
 # comp310-portfolio
 
 Game Controls:
-* W - Jump / Jetpack
 * D - Chainsaw
 * F - Gun
 * Up Arrow - Jump / Jetpack
